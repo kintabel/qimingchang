@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>文件列表</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-4">
+  <h2>文件列表</h2>
+  <a th:href="@{/files/upload}" class="btn btn-primary mb-3">上传文件</a>
+
+  <!-- 添加类别筛选表单 -->
+  <form th:action="@{/files/list}" method="get" class="mb-3">
+    <div class="row">
+      <div class="col-md-6">
+        <select name="category" class="form-select">
+          <option value="">查询全部</option>
+          <option th:each="type : ${fileTypes}"
+                  th:value="${type}"
+                  th:text="${type}"
+                  th:selected="${category == type}"></option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">筛选</button>
+      </div>
+    </div>
+  </form>
+
+  <table class="table">
+    <thead>
+    <tr>
+      <th>文件名</th>
+      <th>上传人</th>
+      <th>文件大小</th>
+      <th>文件类型</th>
+      <th>下载次数</th>
+      <th>操作</th>
+    </tr>
+    </thead>
+    <tbody>
+    <!-- 添加空值检查 -->
+    <tr th:each="file : ${files}" th:if="${file != null}">
+      <td th:text="${file.name} ?: 'N/A'"></td>
+      <td th:text="${file.uploader} ?: 'N/A'"></td>
+      <td th:text="${file.size != null} ? ${file.size + ' KB'} : 'N/A'"></td>
+      <td th:text="${file.type} ?: 'N/A'"></td>
+      <td th:text="${file.count} ?: 0"></td>
+      <td>
+        <!-- 添加空值检查 -->
+        <a th:if="${file.id != null}"
+           th:href="@{/files/download/{id}(id=${file.id})}"
+           class="btn btn-sm btn-primary">下载</a>
+      </td>
+    </tr>
+    <!-- 空列表提示 -->
+    <tr th:if="${files == null or files.isEmpty()}">
+      <td colspan="6" class="text-center text-muted">没有找到符合条件的文件</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <!-- 分页导航 -->
+  <nav th:if="${totalPages > 1}">
+    <ul class="pagination">
+      <li class="page-item" th:classappend="${page == 1} ? 'disabled'">
+        <a class="page-link" th:href="@{/files/list(page=1, category=${category})}">首页</a>
+      </li>
+      <li class="page-item" th:classappend="${page == 1} ? 'disabled'">
+        <!-- 使用Thymeleaf的数学运算 -->
+        <a class="page-link" th:href="@{/files/list(page=${#numbers.subtract(page,1)}, category=${category})}">上一页</a>
+      </li>
+      <li class="page-item" th:each="i : ${#numbers.sequence(1, totalPages)}"
+          th:classappend="${i == page} ? 'active'">
+        <a class="page-link" th:href="@{/files/list(page=${i}, category=${category})}" th:text="${i}"></a>
+      </li>
+      <li class="page-item" th:classappend="${page == totalPages} ? 'disabled'">
+        <!-- 使用Thymeleaf的数学运算 -->
+        <a class="page-link" th:href="@{/files/list(page=${#numbers.add(page,1)}, category=${category})}">下一页</a>
+      </li>
+      <li class="page-item" th:classappend="${page == totalPages} ? 'disabled'">
+        <a class="page-link" th:href="@{/files/list(page=${totalPages}, category=${category})}">末页</a>
+      </li>
+    </ul>
+  </nav>
+</div>
+
+<script>
+  function downloadFile(id, fileName) {
+    if (!id) {
+      console.error('无效的文件ID');
+      return;
+    }
+
+    // 先发送请求更新下载次数
+    fetch('/files/download/' + id, {
+      method: 'GET'
+    })
+            .then(response => {
+              if (response.ok) {
+                // 创建隐藏的iframe来触发文件下载
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = '/files/download/' + id;
+                document.body.appendChild(iframe);
+
+                // 1秒后刷新页面
+                setTimeout(() => {
+                  window.location.reload();
+                }, 300);
+              }
+            })
+            .catch(error => console.error('Error:', error));
+  }
+</script>
+</body>
+</html>
